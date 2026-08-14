@@ -1,0 +1,67 @@
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Database
+#*.db
+#*.db-journal
+
+# Tmp session files
+tmp/
+
+# User-uploaded local-folder libraries and custom adapter scripts
+# (see backend/routers/uploads.py) — real media/user data, not source.
+local_libraries/
+CustomAdapters/uploaded/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# IDE
+.vscode/
+.idea/
+*.suo
+*.user
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env files
+.env
+.env.*
+
+# Test cache
+.pytest_cache/
+
+# Third-party binaries — not project source. The ffmpeg/upscale pipeline was
+# removed from the app (see GATELOG "Post-Handoff Maintenance Pass"), so
+# these are unused leftovers; they're also individually >100MB, which GitHub
+# rejects outright. If you ever need ffmpeg again, download it fresh rather
+# than committing it.
+bin/
+ffmpeg-*/
+ffmpeg-*.7z
+*.7z
+
+# Scratch HTML dumps captured while developing/debugging scrapers and
+# adapters — not project source, and may contain embedded third-party
+# credentials pulled from whatever page was saved (GitHub push protection
+# flagged a Google OAuth Client ID/Secret in one of these). Never commit them.
+page_dump.html
+CustomAdapters/**/page_dump.html
+
+# Alembic (don't ignore versions — they're source-controlled)

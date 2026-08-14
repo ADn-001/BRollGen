@@ -1,0 +1,318 @@
+keyword
+Emperor of Mankind
+God Emperor
+The Emperor
+Malcador the Sigillite
+Horus Lupercal
+Roboute Guilliman
+Lion El'Jonson
+Sanguinius
+Leman Russ
+Rogal Dorn
+Ferrus Manus
+Vulkan
+Corvus Corax
+Jaghatai Khan
+Fulgrim
+Perturabo
+Mortarion
+Magnus the Red
+Angron
+Konrad Curze
+Alpharius
+Omegon
+Lorgar Aurelian
+Abaddon the Despoiler
+Ezekyle Abaddon
+Kharn the Betrayer
+Typhus
+Ahriman
+Lucius the Eternal
+Fabius Bile
+Erebus
+Kor Phaeron
+Belisarius Cawl
+Sebastian Yarrick
+Commissar Yarrick
+Ciaphas Cain
+Saint Celestine
+Constantin Valdor
+Gregor Eisenhorn
+Gideon Ravenor
+The Silent King
+Szarekh
+Imotekh the Stormlord
+Trazyn the Infinite
+Orikan the Diviner
+Ghazghkull Thraka
+Makari
+Eldrad Ulthran
+Jain Zar
+Maugan Ra
+Asurmen
+Commander Farsight
+Shadowsun
+Aun'Va
+Old One Eye
+The Swarmlord
+Imperium of Man
+Adeptus Astartes
+Space Marines
+Adeptus Custodes
+Sisters of Silence
+Adeptus Mechanicus
+Astra Militarum
+Imperial Guard
+Imperial Navy
+Inquisition
+Ecclesiarchy
+Officio Assassinorum
+Grey Knights
+Deathwatch
+Ultramarines
+Blood Angels
+Dark Angels
+Space Wolves
+Imperial Fists
+Salamanders
+Raven Guard
+White Scars
+Iron Hands
+Black Templars
+Chaos
+Chaos Space Marines
+Black Legion
+World Eaters
+Death Guard
+Thousand Sons
+Word Bearers
+Night Lords
+Iron Warriors
+Alpha Legion
+Emperor's Children
+Khorne
+Nurgle
+Tzeentch
+Slaanesh
+Aeldari
+Craftworld Eldar
+Drukhari
+Harlequins
+Ynnari
+Necrons
+Sautekh Dynasty
+Szarekhan Dynasty
+Orks
+Goffs
+Evil Sunz
+Bad Moons
+Deathskulls
+Tyranids
+Hive Fleet Behemoth
+Hive Fleet Kraken
+Hive Fleet Leviathan
+Genestealer Cults
+Tau Empire
+Farsight Enclaves
+Leagues of Votann
+Horus Heresy
+Great Crusade
+Siege of Terra
+Dropsite Massacre
+Burning of Prospero
+Battle of Calth
+Shadow Crusade
+War of the Beast
+Age of Apostasy
+Badab War
+Macharian Crusade
+13th Black Crusade
+Fall of Cadia
+Gathering Storm
+Indomitus Crusade
+Plague Wars
+Devastation of Baal
+Octarius War
+Psychic Awakening
+Arks of Omen
+Terra
+Holy Terra
+Mars
+Cadia
+Macragge
+Baal
+Fenris
+Nocturne
+Prospero
+Caliban
+Armageddon
+Medusa
+Olympia
+Cthonia
+Ultramar
+Eye of Terror
+Webway
+Golden Throne
+Astronomican
+Warp
+Immaterium
+Gellar Field
+STC
+Standard Template Construct
+Machine Spirit
+WAAAGH
+Black Library
+Bolter
+Boltgun
+Heavy Bolter
+Storm Bolter
+Combi Bolter
+Chainsword
+Chainaxe
+Power Sword
+Power Axe
+Power Fist
+Thunder Hammer
+Lightning Claw
+Force Sword
+Force Staff
+Crozius Arcanum
+Plasma Gun
+Plasma Pistol
+Melta Gun
+Multi Melta
+Flamer
+Heavy Flamer
+Lascannon
+Autocannon
+Assault Cannon
+Volkite
+Volkite Culverin
+Volkite Charger
+Lasgun
+Hotshot Lasgun
+Long Las
+Stubber
+Heavy Stubber
+Needler
+Shuriken Catapult
+Shuriken Cannon
+Bright Lance
+Starcannon
+Pulse Rifle
+Pulse Carbine
+Railgun
+Ion Cannon
+Gauss Flayer
+Gauss Reaper
+Tesla Carbine
+Warscythe
+Monomolecular Blade
+Bone Sword
+Fleshborer
+Devourer
+Deathspitter
+Venom Cannon
+Baneblade
+Shadowsword
+Leman Russ
+Rogal Dorn Tank
+Chimera
+Basilisk
+Manticore
+Rhino
+Razorback
+Predator
+Whirlwind
+Land Raider
+Repulsor
+Thunderhawk
+Stormraven
+Drop Pod
+Dreadnought
+Redemptor Dreadnought
+Contemptor Dreadnought
+Knight Castellan
+Knight Paladin
+Warhound Titan
+Reaver Titan
+Warlord Titan
+Imperator Titan
+Monolith
+Ghost Ark
+Doom Scythe
+Trukk
+Battlewagon
+Stompa
+Devilfish
+Hammerhead
+Riptide
+Wraithknight
+Falcon
+Wave Serpent
+Carnifex
+Trygon
+Mawloc
+Hierophant
+Primarch
+Astartes
+Custodian
+Tech Priest
+Magos
+Inquisitor
+Commissar
+Guardsman
+Psyker
+Navigator
+Astropath
+Chapter Master
+Librarian
+Chaplain
+Apothecary
+Techmarine
+Terminator
+Dreadnought
+Daemon Prince
+Chaos Lord
+Sorcerer
+Warpsmith
+Noise Marine
+Berserker
+Rubric Marine
+Plague Marine
+Possessed
+Cultist
+Warboss
+Nob
+Mekboy
+Weirdboy
+Boyz
+Lychguard
+Immortal
+Warrior
+Destroyer
+Cryptek
+Farseer
+Warlock
+Autarch
+Avatar of Khaine
+Howling Banshee
+Striking Scorpion
+Fire Dragon
+Dire Avenger
+Guardian
+Fire Warrior
+Battlesuit
+Broadside
+Crisis Suit
+Ethereal
+Hormagaunt
+Termagant
+Genestealer
+Lictor
+Hive Tyrant
+Broodlord
+Carnifex
+Zoanthrope
+Tervigon
+Norn Emissary

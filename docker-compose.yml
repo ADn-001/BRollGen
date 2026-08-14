@@ -1,0 +1,76 @@
+version: "3.9"
+
+services:
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "7420:7420"
+    volumes:
+      - ./tmp:/app/tmp
+      - ./broll_engine.db:/app/broll_engine.db
+      # Uploaded local_folder libraries and adapter scripts (see
+      # backend/routers/uploads.py) — mounted so they survive a container
+      # restart/rebuild instead of living only in the ephemeral image layer.
+      - ./local_libraries:/app/local_libraries
+      - ./CustomAdapters/uploaded:/app/CustomAdapters/uploaded
+    environment:
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      adapter-wh40k:
+        condition: service_healthy
+      adapter-artvee:
+        condition: service_healthy
+      adapter-loc:
+        condition: service_healthy
+    restart: unless-stopped
+
+  adapter-wh40k:
+    build:
+      context: ./CustomAdapters/wh40k
+      dockerfile: Dockerfile
+      args:
+        ADAPTER_SCRIPT: 40k_adapter.py
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  adapter-artvee:
+    build:
+      context: ./CustomAdapters/wh40k
+      dockerfile: Dockerfile
+      args:
+        ADAPTER_SCRIPT: artvee_adapter.py
+    ports:
+      - "3001:3001"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3001/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  adapter-loc:
+    build:
+      context: ./CustomAdapters/wh40k
+      dockerfile: Dockerfile
+      args:
+        ADAPTER_SCRIPT: loc_adapter.py
+    ports:
+      - "3002:3002"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3002/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped

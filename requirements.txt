@@ -1,0 +1,18 @@
+# Custom adapter dependencies (flask server in CustomAdapters/)
+flask==3.0.3
+beautifulsoup4==4.12.3
+requests==2.32.3
+
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+sqlalchemy==2.0.35
+alembic==1.13.3
+spacy==3.7.6
+rapidfuzz==3.9.7
+playwright==1.47.0
+httpx==0.27.2
+yt-dlp==2024.9.27
+ffmpeg-python==0.2.0
+Pillow==10.4.0
+python-multipart==0.0.12
+aiofiles==24.1.0
