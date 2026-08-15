@@ -234,8 +234,8 @@ def update_session_tags(session_id: str, body: TagsUpdate, request: Request):
 @router.post("/sessions/{session_id}/download", status_code=202)
 async def start_download(session_id: str, request: Request, db: DbDep):
     sess = _get_session(request, session_id)
-    if len(sess.extracted_tags) < sess.item_count:
-        raise HTTPException(400, detail="Tag count is less than item_count. Add more tags first.")
+    if len(sess.extracted_tags) == 0:
+        raise HTTPException(400, detail="No tags to download. Add at least one tag first.")
     if sess.status == "downloading":
         raise HTTPException(409, detail="Download already in progress.")
 

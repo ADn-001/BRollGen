@@ -315,7 +315,7 @@ function StepTags({ session, onProceed }) {
 
   const needed = session.item_count
   const count = tags.length
-  const ready = count >= needed
+  const ready = count > 0
 
   const updateTags = useMutation({
     mutationFn: (t) => sessionsApi.updateTags(session.session_id, t),
@@ -336,8 +336,7 @@ function StepTags({ session, onProceed }) {
     <div className="max-w-2xl">
       <h2 className="text-2xl font-bold mb-2">Review Tags</h2>
       <p className="text-gray-400 mb-6">
-        {count}/{needed} tags · {count < needed && <span className="text-red-400">Add {needed - count} more</span>}
-        {count >= needed && <span className="text-green-400">Ready to download</span>}
+        {count} / {needed} tags
       </p>
 
       <div className="card mb-4">

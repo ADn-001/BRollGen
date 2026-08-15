@@ -15,7 +15,6 @@ import pytest
 ADAPTERS = [
     ("40k.gallery", "http://localhost:3000"),
     ("artvee.com",  "http://localhost:3001"),
-    ("loc.gov",     "http://localhost:3002"),
 ]
 
 
@@ -116,7 +115,6 @@ def test_concurrent_requests_succeed(name, base_url):
 @pytest.mark.parametrize("adapter_file", [
     "40k_adapter.py",
     "artvee_adapter.py",
-    "loc_adapter.py",
 ])
 def test_adapter_has_fallback_to_fresh(adapter_file):
     """Each adapter must contain a fresh/stateless fallback function."""
@@ -138,7 +136,6 @@ def test_adapter_has_fallback_to_fresh(adapter_file):
 @pytest.mark.parametrize("adapter_file", [
     "40k_adapter.py",
     "artvee_adapter.py",
-    "loc_adapter.py",
 ])
 def test_adapter_has_atexit_shutdown(adapter_file):
     """Each adapter must register an atexit handler to close the browser cleanly."""
@@ -155,7 +152,6 @@ def test_adapter_has_atexit_shutdown(adapter_file):
 @pytest.mark.parametrize("adapter_file", [
     "40k_adapter.py",
     "artvee_adapter.py",
-    "loc_adapter.py",
 ])
 def test_adapter_uses_dedicated_worker_thread(adapter_file):
     """
@@ -176,7 +172,6 @@ def test_adapter_uses_dedicated_worker_thread(adapter_file):
 @pytest.mark.parametrize("adapter_file", [
     "40k_adapter.py",
     "artvee_adapter.py",
-    "loc_adapter.py",
 ])
 def test_adapter_handles_launch_failure(adapter_file):
     """Each adapter must permanently disable persistence if the browser launch fails."""

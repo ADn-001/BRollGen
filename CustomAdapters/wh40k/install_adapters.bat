@@ -46,7 +46,7 @@ REM ── Confirm adapter files are present ───────────�
 echo.
 echo Checking adapter files...
 set MISSING=0
-for %%F in (40k_adapter.py artvee_adapter.py loc_adapter.py) do (
+for %%F in (40k_adapter.py artvee_adapter.py wikimedia_adapter.py nasa_adapter.py openverse_adapter.py openverse_base.py) do (
     if exist "%%F" (
         echo   [OK] %%F
     ) else (

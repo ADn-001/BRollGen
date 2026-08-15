@@ -43,6 +43,11 @@ Thumbs.db
 # Env files
 .env
 .env.*
+!.env.example
+
+# Adapter registration token dumps (may contain live client_id/client_secret)
+openversetoken.txt
+CustomAdapters/**/openversetoken.txt
 
 # Test cache
 .pytest_cache/

@@ -18,5 +18,7 @@ RUN playwright install-deps chromium
 # ADAPTER_SCRIPT is the entrypoint — set per-service in docker-compose.yml
 ARG ADAPTER_SCRIPT=40k_adapter.py
 COPY ${ADAPTER_SCRIPT} ./adapter.py
+# Openverse adapters import this sibling module; harmless for 40k/artvee.
+COPY openverse_base.py ./openverse_base.py
 
 CMD ["python", "adapter.py"]

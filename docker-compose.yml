@@ -23,7 +23,11 @@ services:
         condition: service_healthy
       adapter-artvee:
         condition: service_healthy
-      adapter-loc:
+      adapter-wikimedia:
+        condition: service_healthy
+      adapter-nasa:
+        condition: service_healthy
+      adapter-openverse:
         condition: service_healthy
     restart: unless-stopped
 
@@ -59,16 +63,48 @@ services:
       start_period: 30s
     restart: unless-stopped
 
-  adapter-loc:
+  adapter-wikimedia:
     build:
       context: ./CustomAdapters/wh40k
       dockerfile: Dockerfile
       args:
-        ADAPTER_SCRIPT: loc_adapter.py
+        ADAPTER_SCRIPT: wikimedia_adapter.py
     ports:
       - "3002:3002"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3002/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  adapter-nasa:
+    build:
+      context: ./CustomAdapters/wh40k
+      dockerfile: Dockerfile
+      args:
+        ADAPTER_SCRIPT: nasa_adapter.py
+    ports:
+      - "3003:3003"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3003/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  adapter-openverse:
+    build:
+      context: ./CustomAdapters/wh40k
+      dockerfile: Dockerfile
+      args:
+        ADAPTER_SCRIPT: openverse_adapter.py
+    ports:
+      - "3005:3005"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3005/health')"]
       interval: 10s
       timeout: 5s
       retries: 5

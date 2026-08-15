@@ -155,6 +155,22 @@ function ConfigFields({ type, config, sourceId, onChange }) {
       {input('adapter_url', 'Adapter Base URL', 'http://localhost:8080')}
       {input('auth_token', 'Auth Token (optional)', '', true)}
       <div>
+        <label className="label">Default Quality Score</label>
+        <input
+          type="number"
+          className="input"
+          min={0}
+          value={config.default_quality_score ?? ''}
+          onChange={(e) => set('default_quality_score', e.target.value ? parseFloat(e.target.value) : undefined)}
+          placeholder="e.g. 6000000  (≈ 3000×2000 px)"
+        />
+        <p className="text-xs text-gray-500 mt-1">
+          Fallback score used when this adapter's search results don't include image dimensions.
+          Without it, dimension-less results always score 0 and lose to Pexels / Pixabay.
+          Typical reference: Pexels full-res ≈ 20 M · Pixabay full-res ≈ 8 M · LOC placeholder ≈ 6 M.
+        </p>
+      </div>
+      <div>
         <label className="label">Adapter Script Path (for auto-launch)</label>
         <input className="input" value={config.adapter_script_path || ''}
           onChange={(e) => set('adapter_script_path', e.target.value)}

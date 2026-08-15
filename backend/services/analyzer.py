@@ -203,13 +203,28 @@ def _build_llm_prompt(
     n: int,
     profile_tags: list[str],
     global_tags: list[str],
+    profile_description: str | None = None,
 ) -> str:
-    return f"""[TASK]
-You are a B-roll tag extractor. Given a video script, extract exactly {n} searchable tags to find relevant B-roll footage. Tags should be concrete, visual nouns or noun phrases (things that can be photographed or filmed).
+    has_description = bool(profile_description and profile_description.strip())
 
+    niche_context_block = ""
+    if has_description:
+        niche_context_block = (
+            f"\n[NICHE CONTEXT]\n{profile_description.strip()}\n"
+            "Use this context to interpret and disambiguate terms in the script"
+            " — prefer domain-appropriate readings over generic ones.\n"
+        )
+
+    wordlist_note = ""
+    if has_description and profile_tags:
+        wordlist_note = " They are drawn from the same niche described in [NICHE CONTEXT] above."
+
+    return f"""[TASK]
+You are a B-roll tag extractor. Given a video script, extract exactly {n} searchable tags to use as search queries in stock image and video databases. Tags must be concrete, visual nouns or noun phrases — things that can be photographed or filmed and will return relevant results in a stock media search.
+{niche_context_block}
 [NICHE PROFILE WORD LIST]
 {", ".join(profile_tags) if profile_tags else "(none)"}
-(These are high-priority terms specific to this niche. Always include any of these that appear in the script before picking general tags.)
+(These are high-priority terms specific to this niche.{wordlist_note} Prioritize these terms even if they appear in paraphrased or related form in the script — use your judgment to recognize when the script's meaning aligns with a listed term.)
 
 [GLOBAL SUPPLEMENTARY WORD LIST]
 {", ".join(global_tags) if global_tags else "(none)"}
@@ -219,11 +234,11 @@ You are a B-roll tag extractor. Given a video script, extract exactly {n} search
 {script}
 
 [OUTPUT FORMAT]
-Return exactly a JSON array of {n} strings, ordered by first appearance in the script. Example:
+Return exactly a JSON array of {n} strings, ordered by first appearance in the script. The output must be valid JSON parseable by Python's json.loads(). Example:
 ["the emperor", "space marine", "chaos army", "warp storm", "ultramarines chapter"]
 
 [CONSTRAINTS]
-Return only the JSON array. No explanation. No preamble. No trailing questions. No markdown code fences."""
+Return only the JSON array. No explanation. No preamble. No trailing questions. No markdown code fences. Avoid abstract concepts, emotions, verbs, or vague filler terms that produce irrelevant stock results (e.g. "journey", "struggle", "future", "world")."""
 
 
 def _parse_llm_response(text: str, n: int) -> list[str]:
@@ -366,7 +381,7 @@ def extract_tags(
             providers = [p for p in providers if p.id == profile.llm_provider_id] + [
                 p for p in providers if p.id != profile.llm_provider_id
             ]
-        prompt = _build_llm_prompt(script, n, profile_words, global_words)
+        prompt = _build_llm_prompt(script, n, profile_words, global_words, profile.description)
         try:
             llm_text = asyncio.run(_call_llm_cascade(prompt, providers))
             if llm_text:

@@ -173,8 +173,11 @@ async def _search_tag(
         try:
             adapter = _get_adapter(source)
             candidates = await adapter.search(tag.word, limit_per_source)
+            default_score = float((source.config or {}).get("default_quality_score") or 0)
             for c in candidates:
                 c.quality_score = _compute_quality_score(c, c.media_type)
+                if c.quality_score == 0.0 and default_score > 0:
+                    c.quality_score = default_score
             all_candidates.extend((c, source) for c in candidates)
         except Exception as exc:
             logger.warning("Source '%s' search failed for tag '%s': %s", source.name, tag.word, exc)
@@ -247,8 +250,11 @@ async def _download_redundant_for_tag(
             candidates = await adapter.search(tag.word, 5)
             if not candidates:
                 continue
+            default_score = float((source.config or {}).get("default_quality_score") or 0)
             for c in candidates:
                 c.quality_score = _compute_quality_score(c, c.media_type)
+                if c.quality_score == 0.0 and default_score > 0:
+                    c.quality_score = default_score
             best = max(candidates, key=lambda c: c.quality_score)
 
             uid = str(uuid.uuid4())[:8]

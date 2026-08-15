@@ -67,8 +67,28 @@ The engine ranks candidates by `quality_score`:
 - **Images:** `width × height` (higher = better)
 - **Videos:** `width × height` (bitrate is not read at search time)
 - **Fallback:** `file_size_bytes × 0.001` when width/height are unavailable
+- **Zero score:** if all three are absent, the candidate scores `0.0` and will always lose to any source that returns dimensions
 
 Return `width`, `height`, and `file_size_bytes` whenever possible for accurate ranking.
+
+### When your search API doesn't return dimensions
+
+Some sources (e.g. the Library of Congress) only expose dimensions at item-fetch time, not in search results. If you return `null` for `width`, `height`, and `file_size_bytes`, your adapter's results will always score `0.0` and be eliminated by any competing source that does return dimensions — even if your actual images are higher quality.
+
+Two ways to handle this:
+
+**Option A — Use a placeholder in your search response.** If you know the typical resolution of your source's images, return a representative value directly in the search JSON. For example, if your source typically serves 3000×2000 images, return `"width": 3000, "height": 2000` as a static default. The engine will replace these with the real dimensions after the file is downloaded.
+
+**Option B — Set "Default Quality Score" in the Sources UI.** Without any code changes in your adapter, open Sources → your custom adapter → set the **Default Quality Score** field to a numeric value. The engine applies this as a fallback score for any candidate that computes to `0.0` (i.e. all three metadata fields are absent). Use the following as reference points when choosing a value:
+
+| Reference point | Approximate score |
+|---|---|
+| Pexels typical full-res (5472×3648) | ~20,000,000 |
+| Pixabay typical full-res (3840×2160) | ~8,300,000 |
+| LOC placeholder (3000×2000) | 6,000,000 |
+| Pexels compressed preview (800×530) | ~424,000 |
+
+Option A is preferred when you can do it — it's self-contained in the adapter. Option B is the no-code fix for adapters you can't or don't want to modify.
 
 ---
 
@@ -242,7 +262,7 @@ What happens on profile selection:
 3. It polls `/health` every 0.5s for up to 10 seconds.
 4. If your adapter is still not healthy after 10 seconds, session setup is **not blocked** — you'll just see a `start_timeout` status logged to the browser console, and the search results from that source will simply come back empty until you start it manually.
 
-This field is only used for local (non-Docker) auto-launch. It has no effect when running under Docker Compose — see §11.
+This field is only used for local (non-Docker) auto-launch. It has no effect when running under Docker Compose — see §12.
 
 Your script only needs to be a normal, blocking, run-forever server process (`app.run(port=...)` for Flask, `app.listen(...)` for Express, etc.) — no special shutdown hooks are required. When the main B-Roll Engine app process exits, it terminates every adapter subprocess it launched.
 
@@ -250,7 +270,7 @@ Your script only needs to be a normal, blocking, run-forever server process (`ap
 
 ## 10. Persistent Browser Pattern (Recommended for Playwright-Based Adapters)
 
-If your adapter scrapes a website with Playwright instead of calling a clean JSON API, launching a fresh headless browser on every request is slow — often several seconds of pure browser-boot overhead per search or download. The three adapters bundled with B-Roll Engine (`CustomAdapters/wh40k/40k_adapter.py`, `artvee_adapter.py`, `loc_adapter.py`) solve this with a **dedicated worker-thread + job-queue** pattern, and we recommend the same approach for your own Playwright-based adapters.
+If your adapter scrapes a website with Playwright instead of calling a clean JSON API, launching a fresh headless browser on every request is slow — often several seconds of pure browser-boot overhead per search or download. The two Playwright-based adapters bundled with B-Roll Engine (`CustomAdapters/wh40k/40k_adapter.py`, `artvee_adapter.py`) solve this with a **dedicated worker-thread + job-queue** pattern, and we recommend the same approach for your own Playwright-based adapters. (The other three bundled adapters — Wikimedia, NASA, All Openverse — use the Openverse JSON API and need no browser; see §11.)
 
 **Why not just share one `Browser` object across Flask's request threads?** Playwright's *sync* API (`playwright.sync_api`) pins a `Browser`/`Page` to the OS thread that created it. Flask's default dev server runs each request in its own thread (`threaded=True`), so a second request thread trying to touch a `Browser` created on a different thread crashes with `greenlet.error: cannot switch to a different thread`. A simple `threading.Lock` around browser access does *not* fix this — a lock only serializes access, it doesn't move execution onto the browser's owning thread.
 
@@ -332,7 +352,44 @@ Key points if you adopt this pattern:
 
 ---
 
-## 11. Dockerizing Your Adapter
+## 11. Bundled Openverse API Adapters (ports 3002 / 3003 / 3005)
+
+Three bundled adapters query the Openverse API (openverse.org — 600M+ openly licensed images) instead of scraping. They share one module, `openverse_base.py`, which handles OAuth2 token fetch/refresh, pagination, parsing, and the download proxy.
+
+| Adapter | Port | Behavior |
+|---------|------|----------|
+| `wikimedia_adapter.py` | 3002 | Openverse `source=wikimedia` — Wikimedia Commons |
+| `nasa_adapter.py` | 3003 | Openverse `source=nasa` — NASA public domain imagery |
+| `openverse_adapter.py` | 3005 | Openverse, no source filter — the full catalog |
+
+### Library of Congress / British Library
+
+Openverse has **no `loc` or `british` source slug**. Both institutions publish through Flickr, which Openverse aggregates under `source=flickr`. Reach their images through the **All Openverse** adapter (3005) — its unfiltered search surfaces their Flickr Commons uploads. The Flickr API itself was recently paywalled and is not used by any adapter.
+
+### Authentication (optional but recommended)
+
+Anonymous access works but caps results at 20 per page. Register once for a client:
+
+```bash
+curl -X POST https://api.openverse.org/v1/auth_tokens/register/ \
+  -H "Content-Type: application/json" \
+  -d '{"name":"BRollGen V1","description":"Local b-roll curation tool","email":"you@example.com"}'
+```
+
+The response contains `client_id` and `client_secret`. Supply them either way:
+
+- **`.env` file** (repo root): copy `.env.example` to `.env` and fill in `OPENVERSE_CLIENT_ID` / `OPENVERSE_CLIENT_SECRET`. The adapters read it on startup (`.env` is gitignored).
+- **Source Auth Token** (Sources UI): set to `client_id:client_secret`. This header value takes precedence over `.env`.
+
+Each adapter's `/health` response includes `"authenticated": true|false` so you can confirm credentials were detected.
+
+### Docker
+
+Each Openverse adapter runs as its own Compose service (`adapter-wikimedia`, `adapter-nasa`, `adapter-openverse`), built from the same parameterized `CustomAdapters/wh40k/Dockerfile` — see §12. The `download_url` the adapters return is derived from the request's Host header, so it is correct both natively (`localhost:300x`) and in Docker (Compose service name). When running authenticated under Docker, pass `OPENVERSE_CLIENT_ID` / `OPENVERSE_CLIENT_SECRET` as env vars on the adapter containers — the repo-root `.env` is not mounted into them.
+
+---
+
+## 12. Dockerizing Your Adapter
 
 If you want your adapter to run as its own container (matching how the bundled `wh40k` adapters are deployed — see the project's `DOCKER_SETUP.md`), the pattern used for all three bundled adapters is a single parameterized `Dockerfile` with an `ARG` selecting which script to run:
 
@@ -380,14 +437,14 @@ Two things to remember when your adapter runs inside Docker rather than as a loc
 
 ---
 
-## 12. Troubleshooting
+## 13. Troubleshooting
 
 | Error | Cause | Fix |
 |-------|-------|-----|
 | Connection refused | Adapter not running | Start your adapter process, or configure `adapter_script_path` for auto-launch (§9) |
 | HTTP 401 Unauthorized | Wrong/missing token | Check the Auth Token in source config |
 | Empty results | Query not matching | Check your search logic; try exact match |
-| Quality score = 0 | Missing width/height | Return dimensions in search results |
+| Quality score = 0 / adapter never wins selection | Search results missing `width`, `height`, and `file_size_bytes` — candidate scores 0.0 and loses to any source that returns dimensions | Return dimensions in search results (Option A), or set **Default Quality Score** in Sources UI (Option B) — see §3 |
 | Slow downloads | Large files | Stream the response rather than buffering |
 | `greenlet.error: cannot switch to a different thread` | Playwright `Browser`/`Page` touched from a different thread than the one that launched it | Adopt the persistent worker-thread pattern in §10 instead of sharing a Playwright object across Flask's request threads |
 | Adapter shows `start_timeout` after profile selection | Adapter takes longer than 10s to become healthy, or `adapter_script_path` points to the wrong file | Start the adapter manually and check its own console output for the real error; verify the path in Sources |
