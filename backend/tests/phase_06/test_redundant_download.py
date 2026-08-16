@@ -5,6 +5,9 @@ Run from backend/ directory:
     pytest tests/phase_06/test_redundant_download.py -v --tb=short
 """
 import dataclasses
+import uuid
+from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -155,3 +158,220 @@ def test_session_dict_redundant_field_false_for_normal_profile(client):
         finally:
             client.app.state.sessions.pop(sid, None)
     client.delete(f"/api/profiles/{pid}")
+
+
+# ---------------------------------------------------------------------------
+# Tests: duplicate-tag slot handling (dedupe_repeat_tags=False K² regression)
+# ---------------------------------------------------------------------------
+
+_PNG_1X1 = (
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+)
+
+
+class _FakeAdapter:
+    """Returns fixed candidates; download writes a real 1x1 PNG so the
+    downloader's dimension-read / stat() calls succeed."""
+
+    def __init__(self, candidates, search_calls):
+        self._candidates = candidates
+        self.search_calls = search_calls
+
+    async def search(self, query, limit):
+        self.search_calls.append(query)
+        return list(self._candidates)
+
+    async def download(self, candidate, dest_path):
+        import base64
+        dest_path.write_bytes(base64.b64decode(_PNG_1X1))
+        return dest_path
+
+
+def _make_candidates(source_id):
+    from services.source_adapters.base import MediaCandidate
+    return [
+        MediaCandidate(
+            id="c1", source_id=source_id, media_type="image",
+            download_url="https://example.test/a.jpg", width=320, height=240,
+        ),
+        MediaCandidate(
+            id="c2", source_id=source_id, media_type="image",
+            download_url="https://example.test/b.jpg", width=480, height=360,
+        ),
+    ]
+
+
+def _create_profile_with_source(client, dedupe, multi_item):
+    r = client.post("/api/profiles", json={
+        "name": f"K2Profile-{uuid.uuid4().hex[:8]}",
+        "dedupe_repeat_tags": dedupe,
+        "multi_item_per_tag": multi_item,
+        "default_item_count": 2,
+    })
+    assert r.status_code == 201, r.text
+    pid = r.json()["id"]
+
+    r = client.post("/api/sources", json={
+        "name": "K2FakeSource", "type": "local_folder", "enabled": True,
+    })
+    assert r.status_code == 201, r.text
+    sid = r.json()["id"]
+
+    r = client.put(f"/api/profiles/{pid}/sources", json={"source_ids": [sid]})
+    assert r.status_code == 200, r.text
+    return pid, sid
+
+
+def _make_duplicate_session(pid, tmp_dir, dedupe):
+    from session_state import Session, Tag
+    return Session(
+        session_id=str(uuid.uuid4()), profile_id=pid, script_text="", item_count=2,
+        tmp_dir=Path(tmp_dir), status="awaiting_review",
+        dedupe_repeat_tags=dedupe,
+        extracted_tags=[
+            Tag(word="emperor", source="manual", occurrence_index=0),
+            Tag(word="emperor", source="manual", occurrence_index=1),
+        ],
+    )
+
+
+def test_dedupe_off_same_word_produces_exactly_k_results(client, monkeypatch):
+    """dedupe_repeat_tags=False + word twice must yield exactly 2 results with
+    distinct tag_occurrence_index values — NOT K²=4 (regression lock for the
+    duplicate-tag reprocessing bug). Search must fire once per unique word."""
+    import asyncio
+    import tempfile
+    from db.database import SessionLocal
+    from services import downloader as dl
+
+    pid, sid = _create_profile_with_source(client, dedupe=False, multi_item=False)
+    try:
+        search_calls = []
+        fake = _FakeAdapter(_make_candidates(sid), search_calls)
+        monkeypatch.setattr(dl, "_get_adapter", lambda source: fake)
+
+        with tempfile.TemporaryDirectory() as td:
+            sess = _make_duplicate_session(pid, td, dedupe=False)
+            db = SessionLocal()
+            try:
+                results = asyncio.run(dl.run_downloads(sess, db))
+            finally:
+                db.close()
+
+            assert len(results) == 2, f"expected exactly 2 results, got {len(results)}"
+            indexes = [r.tag_occurrence_index for r in results]
+            assert sorted(indexes) == [0, 1], f"indexes must be [0, 1], got {sorted(indexes)}"
+            assert len(set(indexes)) == len(indexes), \
+                f"duplicate tag_occurrence_index values: {indexes}"
+            assert search_calls == ["emperor"], f"search must run once per word, got {search_calls}"
+            for r in results:
+                assert r.file_path.exists(), f"downloaded file missing: {r.file_path}"
+    finally:
+        client.delete(f"/api/profiles/{pid}")
+        client.delete(f"/api/sources/{sid}")
+
+
+def test_dedupe_on_manual_duplicate_tags_still_fill_all_slots(client, monkeypatch):
+    """dedupe=True + same word twice (manually injected) must still fill both
+    slots from a single search — the guard change must not collapse them."""
+    import asyncio
+    import tempfile
+    from db.database import SessionLocal
+    from services import downloader as dl
+
+    pid, sid = _create_profile_with_source(client, dedupe=True, multi_item=False)
+    try:
+        search_calls = []
+        fake = _FakeAdapter(_make_candidates(sid), search_calls)
+        monkeypatch.setattr(dl, "_get_adapter", lambda source: fake)
+
+        with tempfile.TemporaryDirectory() as td:
+            sess = _make_duplicate_session(pid, td, dedupe=True)
+            db = SessionLocal()
+            try:
+                results = asyncio.run(dl.run_downloads(sess, db))
+            finally:
+                db.close()
+
+        assert len(results) == 2, f"expected exactly 2 results, got {len(results)}"
+        assert sorted(r.tag_occurrence_index for r in results) == [0, 1]
+        assert search_calls == ["emperor"], f"search must run once, got {search_calls}"
+    finally:
+        client.delete(f"/api/profiles/{pid}")
+        client.delete(f"/api/sources/{sid}")
+
+
+def test_reused_from_uid_points_to_first_slot_file(client, monkeypatch):
+    """When fewer distinct candidates than slots, the reuse slot's
+    reused_from_uid must reference the first slot's on-disk file stem."""
+    import asyncio
+    import tempfile
+    from db.database import SessionLocal
+    from services import downloader as dl
+
+    # multi_item=True collapses the search to one best candidate → 1 distinct
+    # file for 2 slots → the second slot must be marked as reused.
+    pid, sid = _create_profile_with_source(client, dedupe=True, multi_item=True)
+    try:
+        fake = _FakeAdapter(_make_candidates(sid), [])
+        monkeypatch.setattr(dl, "_get_adapter", lambda source: fake)
+
+        with tempfile.TemporaryDirectory() as td:
+            sess = _make_duplicate_session(pid, td, dedupe=True)
+            db = SessionLocal()
+            try:
+                results = asyncio.run(dl.run_downloads(sess, db))
+            finally:
+                db.close()
+
+        assert len(results) == 2, f"expected exactly 2 results, got {len(results)}"
+        first, second = sorted(results, key=lambda r: r.tag_occurrence_index)
+        assert first.reused_from_uid is None, f"first slot must not be marked reused: {first.reused_from_uid!r}"
+        assert second.reused_from_uid == first.file_path.stem, (
+            f"reused_from_uid must point at first slot file stem, "
+            f"got {second.reused_from_uid!r}, expected {first.file_path.stem!r}"
+        )
+    finally:
+        client.delete(f"/api/profiles/{pid}")
+        client.delete(f"/api/sources/{sid}")
+
+
+def test_from_tags_allow_duplicate_tags_flag(client):
+    """POST /sessions/from-tags must honor allow_duplicate_tags, mirroring
+    create_session's mapping (True→dedupe=False, False→dedupe=True)."""
+    r = client.post("/api/profiles", json={
+        "name": "FromTagsDedupeProfile", "default_item_count": 2,
+    })
+    assert r.status_code == 201, r.text
+    pid = r.json()["id"]
+    sids = []
+    try:
+        r = client.post("/api/sessions/from-tags", json={
+            "profile_id": pid, "tags": ["emperor", "emperor"],
+            "allow_duplicate_tags": True,
+        })
+        assert r.status_code == 201, r.text
+        sids.append(r.json()["session_id"])
+        assert r.json()["dedupe_repeat_tags"] is False, \
+            "allow_duplicate_tags=True must set dedupe_repeat_tags=False"
+
+        r = client.post("/api/sessions/from-tags", json={
+            "profile_id": pid, "tags": ["emperor", "emperor"],
+            "allow_duplicate_tags": False,
+        })
+        assert r.status_code == 201, r.text
+        sids.append(r.json()["session_id"])
+        assert r.json()["dedupe_repeat_tags"] is True, \
+            "allow_duplicate_tags=False must set dedupe_repeat_tags=True"
+
+        r = client.post("/api/sessions/from-tags", json={
+            "profile_id": pid, "tags": ["emperor", "emperor"],
+        })
+        assert r.status_code == 201, r.text
+        sids.append(r.json()["session_id"])
+        assert r.json()["dedupe_repeat_tags"] is True, \
+            "omitting allow_duplicate_tags must fall back to profile default (True)"
+    finally:
+        for sid in sids:
+            client.delete(f"/api/sessions/{sid}")
+        client.delete(f"/api/profiles/{pid}")

@@ -153,13 +153,18 @@ def test_extract_tags_signature_accepts_dedupe_override():
         "extract_tags() must have a dedupe_override parameter"
 
 
-def test_downloader_reads_sess_dedupe_not_profile():
+def test_downloader_does_not_gate_on_sess_dedupe():
     """
-    downloader.py must reference sess.dedupe_repeat_tags, not profile.dedupe_repeat_tags.
+    downloader.py must not gate word-group processing on sess.dedupe_repeat_tags.
+    That guard caused the K² reprocessing bug (dedupe=False never skipped a
+    processed word, so each occurrence re-ran the whole slot group). Dedupe of
+    repeated tags now happens at extraction time (analyzer.py); the downloader
+    processes each unique word group once via tag_groups. Also must not read the
+    profile's dedupe value directly.
     """
     import pathlib
     src = (pathlib.Path(__file__).parent.parent.parent / "services" / "downloader.py").read_text()
     assert "profile.dedupe_repeat_tags" not in src, \
-        "downloader.py must not reference profile.dedupe_repeat_tags — use sess.dedupe_repeat_tags"
-    assert "sess.dedupe_repeat_tags" in src, \
-        "downloader.py must reference sess.dedupe_repeat_tags"
+        "downloader.py must not reference profile.dedupe_repeat_tags"
+    assert "sess.dedupe_repeat_tags" not in src, \
+        "downloader.py must not reference sess.dedupe_repeat_tags — dedupe is an extraction-time concern"

@@ -160,6 +160,7 @@ class SessionFromTags(BaseModel):
     profile_id: int
     tags: list[str]              # plain words, one per search call
     item_count: int | None = None  # defaults to len(tags)
+    allow_duplicate_tags: bool | None = None  # None → use profile.dedupe_repeat_tags
 
 
 @router.post("/sessions/from-tags", status_code=201)
@@ -178,6 +179,13 @@ async def create_session_from_tags(body: SessionFromTags, request: Request, db: 
 
     item_count = body.item_count or len(words)
 
+    # allow_duplicate_tags=True → dedupe=False; allow_duplicate_tags=False → dedupe=True
+    # None → fall back to profile setting
+    if body.allow_duplicate_tags is not None:
+        effective_dedupe = not body.allow_duplicate_tags
+    else:
+        effective_dedupe = profile.dedupe_repeat_tags
+
     sid = str(uuid.uuid4())
     tmp_dir = TMP_BASE / sid
     tmp_dir.mkdir(parents=True, exist_ok=True)
@@ -194,6 +202,7 @@ async def create_session_from_tags(body: SessionFromTags, request: Request, db: 
         item_count=item_count,
         tmp_dir=tmp_dir,
         status="awaiting_review",
+        dedupe_repeat_tags=effective_dedupe,
     )
     sess.extracted_tags = tags
     sess.needs_more_tags = len(tags) < item_count

@@ -348,7 +348,7 @@ async def run_downloads(sess: AppSession, db: Session) -> list[DownloadResult]:
 
     for tag in sess.extracted_tags:
         word_key = tag.word.lower()
-        if word_key in processed_words and sess.dedupe_repeat_tags:
+        if word_key in processed_words and not redundant_mode:
             continue
         processed_words.add(word_key)
 
@@ -382,19 +382,20 @@ async def run_downloads(sess: AppSession, db: Session) -> list[DownloadResult]:
 
         # Fill K slots — reuse best if insufficient distinct files
         slots = tag_groups[word_key]
-        download_plan: list[tuple[Tag, MediaCandidate, MediaSource, str | None]] = []
+        download_plan: list[tuple[Tag, MediaCandidate, MediaSource, bool]] = []
         for i, slot_tag in enumerate(slots):
             if i < len(distinct):
                 cand, src = distinct[i]
-                download_plan.append((slot_tag, cand, src, None))
+                download_plan.append((slot_tag, cand, src, False))
             else:
                 # Reuse the best available
                 best_cand, best_src = distinct[0]
-                reused_uid = results[0].file_path.stem if results else None
-                download_plan.append((slot_tag, best_cand, best_src, str(best_cand.id)))
+                download_plan.append((slot_tag, best_cand, best_src, True))
+
+        group_first_uid: str | None = None
 
         # Download each planned item
-        for slot_tag, cand, src, reused_from_uid in download_plan:
+        for slot_tag, cand, src, is_reused in download_plan:
             uid = str(uuid.uuid4())[:8]
             ext = _infer_ext(cand.download_url, None)
             dest = sess.tmp_dir / f"{uid}{ext}"
@@ -451,8 +452,10 @@ async def run_downloads(sess: AppSession, db: Session) -> list[DownloadResult]:
                     height=h,
                     file_size_bytes=size_bytes,
                     quality_score=quality_score,
-                    reused_from_uid=reused_from_uid,
+                    reused_from_uid=group_first_uid if is_reused else None,
                 ))
+                if group_first_uid is None:
+                    group_first_uid = uid
             except Exception as exc:
                 logger.warning(
                     "Download failed for tag '%s' from source '%s': %s",
